@@ -16,9 +16,12 @@ class DataLoader():
         params:
         batch_size : Size of the mini-batch
         seq_length : Sequence length to be considered
-        datasets : The indices of the datasets to use
+        num_of_validation : number of validation dataset will be used
+        infer : flag for test mode
+        generate : flag for data generation mode
         forcePreProcess : Flag to forcefully preprocess the data again from csv files
         '''
+        # base test files
         base_test_dataset=  ['/data/test/biwi/biwi_eth.txt', 
                         '/data/test/crowds/crowds_zara01.txt',
                         '/data/test/crowds/uni_examples.txt', 
@@ -27,7 +30,7 @@ class DataLoader():
                           '/data/test/stanford/little_0.txt','/data/test/stanford/little_1.txt','/data/test/stanford/little_2.txt','/data/test/stanford/little_3.txt','/data/test/stanford/nexus_5.txt','/data/test/stanford/nexus_6.txt',
                           '/data/test/stanford/quad_0.txt','/data/test/stanford/quad_1.txt','/data/test/stanford/quad_2.txt','/data/test/stanford/quad_3.txt'
                           ]
-
+        #base train files
         base_train_dataset = ['/data/train/biwi/biwi_hotel.txt', 
                         '/data/train/crowds/arxiepiskopi1.txt','/data/train/crowds/crowds_zara02.txt',
                         '/data/train/crowds/crowds_zara03.txt','/data/train/crowds/students001.txt','/data/train/crowds/students003.txt',
@@ -36,33 +39,37 @@ class DataLoader():
                         '/data/train/stanford/deathCircle_4.txt','/data/train/stanford/gates_0.txt','/data/train/stanford/gates_1.txt','/data/train/stanford/gates_3.txt','/data/train/stanford/gates_4.txt','/data/train/stanford/gates_5.txt','/data/train/stanford/gates_6.txt','/data/train/stanford/gates_7.txt','/data/train/stanford/gates_8.txt','/data/train/stanford/hyang_4.txt',
                         '/data/train/stanford/hyang_5.txt','/data/train/stanford/hyang_6.txt','/data/train/stanford/hyang_9.txt','/data/train/stanford/nexus_0.txt','/data/train/stanford/nexus_1.txt','/data/train/stanford/nexus_2.txt','/data/train/stanford/nexus_3.txt','/data/train/stanford/nexus_4.txt','/data/train/stanford/nexus_7.txt','/data/train/stanford/nexus_8.txt','/data/train/stanford/nexus_9.txt'
                         ]
+        # dimensions of each file set
         self.dataset_dimensions = {'biwi':[720, 576], 'crowds':[720, 576], 'stanford':[595, 326], 'mot':[768, 576]}
+        
         # List of data directories where raw data resides
-
         self.base_train_path = 'data/train/'
         self.base_test_path = 'data/test/'
         self.base_validation_path = 'data/validation/'
 
+        # check infer flag, if true choose test directory as base directory
         if infer is False:
             self.base_data_dirs = base_train_dataset
         else:
             self.base_data_dirs = base_test_dataset
 
+        # get all files using python os and base directories
         self.train_dataset = self.get_dataset_path(self.base_train_path, f_prefix)
         self.test_dataset = self.get_dataset_path(self.base_test_path, f_prefix)
         self.validation_dataset = self.get_dataset_path(self.base_validation_path, f_prefix)
 
 
-
+        # if generate mode, use directly train base files
         if generate:
             self.train_dataset = [os.path.join(f_prefix, dataset[1:]) for dataset in base_train_dataset]
 
-        #requst of use of validation dataset
+        #request of use of validation dataset
         if num_of_validation>0:
             self.additional_validation = True
         else:
             self.additional_validation = False
 
+        # check validation dataset availibility and clip the reuqested number if it is bigger than available validation dataset
         if self.additional_validation:
             if len(self.validation_dataset) is 0:
                 print("There is no validation dataset.Aborted.")
@@ -71,13 +78,14 @@ class DataLoader():
                 num_of_validation = np.clip(num_of_validation, 0, len(self.validation_dataset))
                 self.validation_dataset = random.sample(self.validation_dataset, num_of_validation)
 
-
+        # if not infer mode, use train dataset
         if infer is False:
             self.data_dirs = self.train_dataset
         else:
+            # use validation dataset
             if self.additional_validation:
                 self.data_dirs = self.validation_dataset
-            
+            # use test dataset
             else:
                 self.data_dirs = self.test_dataset
 
@@ -88,6 +96,7 @@ class DataLoader():
         # Number of datasets
         self.numDatasets = len(self.data_dirs)
 
+        # array for keepinng target ped ids for each sequence
         self.target_ids = []
 
         # Data directory where the pre-processed pickle file resides
@@ -110,7 +119,7 @@ class DataLoader():
         self.data_file_vl = os.path.join(self.val_data_dir, "trajectories_val.cpkl")
 
 
-        #for creating a dict key: folder names, values: files in this folder
+        # for creating a dict key: folder names, values: files in this folder
         self.create_folder_file_dict()
 
         if self.additional_validation:
@@ -122,7 +131,7 @@ class DataLoader():
                 self.frame_preprocess(self.validation_dataset, self.data_file_vl, self.additional_validation)
 
         if self.infer:
-            # If the file doesn't exist or forcePreProcess is true
+        # if infer mode, and no additional files -> test preprocessing
             if not self.additional_validation:
                 if not(os.path.exists(self.data_file_te)) or forcePreProcess:
                     print("Creating pre-processed test data from raw data")
@@ -130,10 +139,13 @@ class DataLoader():
                     # Note that this data is processed in frames
                     print("Working on directory: ", self.data_file_te)
                     self.frame_preprocess(self.data_dirs, self.data_file_te)
+            # if infer mode, and there are additional validation files -> validation dataset visualization
             else:
                 print("Validation visualization file will be created")
+        
+        # if not infer mode
         else:
-            # If the file doesn't exist or forcePreProcess is true
+            # If the file doesn't exist or forcePreProcess is true -> training pre-process
             if not(os.path.exists(self.data_file_tr)) or forcePreProcess:
                 print("Creating pre-processed training data from raw data")
                 # Preprocess the data from the csv files of the datasets
@@ -142,12 +154,12 @@ class DataLoader():
 
         if self.infer:
             # Load the processed data from the pickle file
-            if not self.additional_validation:
+            if not self.additional_validation: #test mode
                 self.load_preprocessed(self.data_file_te)
-            else:
+            else:  # validation mode
                 self.load_preprocessed(self.data_file_vl, True)
 
-        else:
+        else: # training mode
             self.load_preprocessed(self.data_file_tr)
 
         # Reset all the data pointers of the dataloader object
@@ -161,6 +173,7 @@ class DataLoader():
         params:
         data_dirs : List of directories where raw data resides
         data_file : The file into which all the pre-processed data needs to be stored
+        validation_set: true when a dataset is in validation set
         '''
         # all_frame_data would be a list of list of numpy arrays corresponding to each dataset
         # Each numpy array will correspond to a frame and would be of size (numPeds, 3) each row
@@ -171,14 +184,16 @@ class DataLoader():
         # frameList_data would be a list of lists corresponding to each dataset
         # Each list would contain the frameIds of all the frames in the dataset
         frameList_data = []
+        valid_numPeds_data= []
         # numPeds_data would be a list of lists corresponding to each dataset
         # Ech list would contain the number of pedestrians in each frame in the dataset
         numPeds_data = []
-        valid_numPeds_data= []
+        
 
+        #each list includes ped ids of this frame
         pedsList_data = []
         valid_pedsList_data = []
-
+        # target ped ids for each sequence
         target_ids = []
         orig_data = []
 
@@ -189,46 +204,39 @@ class DataLoader():
 
         # For each dataset
         for directory in data_dirs:
-            # define path of the csv file of the current dataset
-            # file_path = os.path.join(directory, 'pixel_pos.csv')
-            #file_path = os.path.join(directory, 'pixel_pos_interpolate.csv')
 
             # Load the data from the txt file
             print("Now processing: ", directory)
             column_names = ['frame_num','ped_id','y','x']
 
+            # if training mode, read train file to pandas dataframe and process
             if self.infer is False:
                 df = pd.read_csv(directory, dtype={'frame_num':'int','ped_id':'int' }, delimiter = ' ',  header=None, names=column_names)
-                #self.target_ids = np.unique(np.array(df['ped_id']))
                 self.target_ids = np.array(df.drop_duplicates(subset={'ped_id'}, keep='first', inplace=False)['ped_id'])
 
 
             else:
+                # if validation mode, read validation file to pandas dataframe and process
                 if self.additional_validation:
                     df = pd.read_csv(directory, dtype={'frame_num':'int','ped_id':'int' }, delimiter = ' ',  header=None, names=column_names)
                     self.target_ids = np.array(df.drop_duplicates(subset={'ped_id'}, keep='first', inplace=False)['ped_id'])
 
+                # if test mode, read test file to pandas dataframe and process
                 else:
                     column_names = ['frame_num','ped_id','y','x']
                     df = pd.read_csv(directory, dtype={'frame_num':'int','ped_id':'int' }, delimiter = ' ',  header=None, names=column_names, converters = {c:lambda x: float('nan') if x == '?' else float(x) for c in ['y','x']})
                     self.target_ids = np.array(df[df['y'].isnull()].drop_duplicates(subset={'ped_id'}, keep='first', inplace=False)['ped_id'])
 
-
+            # convert pandas -> numpy array
             data = np.array(df)
+
+            # keep original copy of file
             orig_data.append(data)
+
+            #swap x and y points (in txt file it is like -> y,x)
             data = np.swapaxes(data,0,1)
-            #print(data[:,0:40])
-            '''
-            if self.infer is True or self.generate is True:
-                # Frame IDs of the frames in the current dataset
-                if self.additional_validation:
-                    frameList = data[0, :].tolist()
-                else:
-                    frameList = data[0, :].tolist()
-            else:
-                #frameList = np.unique(data[0, :]).tolist()
-                frameList = data[0, :].tolist()
-            '''
+            
+            # get frame numbers
             frameList = data[0, :].tolist()
 
 
@@ -239,7 +247,6 @@ class DataLoader():
             frameList_data.append(frameList)
             # Initialize the list of numPeds for the current dataset
             numPeds_data.append([])
-
             valid_numPeds_data.append([])
 
             # Initialize the list of numpy arrays for the current dataset
@@ -247,8 +254,8 @@ class DataLoader():
             # Initialize the list of numpy arrays for the current dataset
             valid_frame_data.append([])
 
+            # list of peds for each frame
             pedsList_data.append([])
-
             valid_pedsList_data.append([])
 
             target_ids.append(self.target_ids)
@@ -282,8 +289,8 @@ class DataLoader():
                     # Add their pedID, x, y to the row of the numpy array
                     pedsWithPos.append([ped, current_x, current_y])
 
+                # At inference time, data generation and if dataset is a validation dataset, no validation data
                 if (ind >= numFrames * self.val_fraction) or (self.infer) or (self.generate) or (validation_set):
-                    # At inference time, no validation data
                     # Add the details of all the peds in the current frame to all_frame_data
                     all_frame_data[dataset_index].append(np.array(pedsWithPos))
                     pedsList_data[dataset_index].append(pedsList)
@@ -298,7 +305,7 @@ class DataLoader():
 
 
             dataset_index += 1
-        # Save the tuple (all_frame_data, frameList_data, numPeds_data) in the pickle file
+        # Save the arrays in the pickle file
         f = open(data_file, "wb")
         pickle.dump((all_frame_data, frameList_data, numPeds_data, valid_numPeds_data, valid_frame_data, pedsList_data, valid_pedsList_data, target_ids, orig_data), f, protocol=2)
         f.close()
@@ -309,6 +316,7 @@ class DataLoader():
         Function to load the pre-processed data into the DataLoader object
         params:
         data_file : the path to the pickled data file
+        validation_set : flag for validation dataset
         '''
         # Load data from the pickled file
         if(validation_set):
@@ -344,6 +352,7 @@ class DataLoader():
             all_frame_data = self.data[dataset]
             valid_frame_data = self.valid_data[dataset]
             dataset_name = self.data_dirs[dataset].split('/')[-1]
+            # calculate number of sequence 
             num_seq_in_dataset = int(len(all_frame_data) / (self.seq_length))
             num_valid_seq_in_dataset = int(len(valid_frame_data) / (self.seq_length))
             if not validation_set:
@@ -401,7 +410,6 @@ class DataLoader():
             # While there is still seq_length number of frames left in the current dataset
             if idx + self.seq_length-1 < len(frame_data):
                 # All the data in this sequence
-                # seq_frame_data = frame_data[idx:idx+self.seq_length+1]
                 seq_source_frame_data = frame_data[idx:idx+self.seq_length]
                 seq_numPedsList = numPedsList[idx:idx+self.seq_length]
                 seq_PedsList = pedsList[idx:idx+self.seq_length]
@@ -412,6 +420,7 @@ class DataLoader():
                 y_batch.append(seq_target_frame_data)
                 numPedsList_batch.append(seq_numPedsList)
                 PedsList_batch.append(seq_PedsList)
+                # get correct target ped id for the sequence
                 target_ids.append(self.target_ids[self.dataset_pointer][math.floor((self.frame_pointer)/self.seq_length)])
                 self.frame_pointer += self.seq_length
 
@@ -422,22 +431,7 @@ class DataLoader():
                 # Not enough frames left
                 # Increment the dataset pointer and set the frame_pointer to zero
                 self.tick_batch_pointer(valid=False)
-        '''
-        if self.infer:
-            if self.additional_validation:
-                total_batch_frame_number = self.batch_size*self.seq_length
-                lower_pound = math.floor(max(0, ((self.frame_pointer - total_batch_frame_number)/self.seq_length)))
-                upper_bound = math.floor(self.frame_pointer/self.seq_length)
-                return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, self.target_ids[self.dataset_pointer][lower_pound:upper_bound]
-            else:
-                return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, self.target_ids[self.dataset_pointer][math.floor((self.frame_pointer-self.seq_length)/self.seq_length)]
         
-        else:
-            total_batch_frame_number = self.batch_size*self.seq_length
-            lower_pound = math.floor(max(0, ((self.frame_pointer - total_batch_frame_number)/self.seq_length)))
-            upper_bound = math.floor(self.frame_pointer/self.seq_length)
-            return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, self.target_ids[self.dataset_pointer][lower_pound:upper_bound]
-        '''
         return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, target_ids
 
 
@@ -485,7 +479,7 @@ class DataLoader():
                 y_batch.append(seq_target_frame_data)
                 numPedsList_batch.append(seq_numPedsList)
                 PedsList_batch.append(seq_PedsList)
-                
+                # get correct target ped id for the sequence
                 target_ids.append(self.target_ids[self.dataset_pointer][math.floor((self.valid_frame_pointer)/self.seq_length)])
                 self.valid_frame_pointer += self.seq_length
 
@@ -496,12 +490,7 @@ class DataLoader():
                 # Not enough frames left
                 # Increment the dataset pointer and set the frame_pointer to zero
                 self.tick_batch_pointer(valid=True)
-        '''
-        total_batch_frame_number = self.batch_size*self.seq_length
-        lower_pound = math.floor(max(0, ((self.frame_pointer - total_batch_frame_number)/self.seq_length)))
-        upper_bound = math.floor(self.frame_pointer/self.seq_length)
-        return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, self.target_ids[self.dataset_pointer][lower_pound:upper_bound]
-        '''
+
         return x_batch, y_batch, d, numPedsList_batch, PedsList_batch, target_ids
 
 
@@ -545,8 +534,9 @@ class DataLoader():
             self.valid_frame_pointer = 0
 
     def switch_to_dataset_type(self, train = False, load_data = True):
+        # function for switching between train and validation datasets during training session
         print('--------------------------------------------------------------------------')
-        if not train:
+        if not train: # if train mode, switch to validation mode
             if self.additional_validation:
                 print("Dataset type switching: training ----> validation")
                 self.orig_seq_lenght, self.seq_length = self.seq_length, self.orig_seq_lenght
@@ -555,10 +545,10 @@ class DataLoader():
                 if load_data:
                     self.load_preprocessed(self.data_file_vl, True)
                     self.reset_batch_pointer(valid=False)
-            else:
+            else: 
                 print("There is no validation dataset.Aborted.")
                 return
-        else:
+        else:# if validation mode, switch to train mode
             print("Dataset type switching: validation -----> training")
             self.orig_seq_lenght, self.seq_length = self.seq_length, self.orig_seq_lenght
             self.data_dirs = self.train_dataset
@@ -570,23 +560,27 @@ class DataLoader():
 
 
     def convert_proper_array(self, x_seq, num_pedlist, pedlist):
-        #converter function to appropriate format
+        #converter function to appropriate format. Instead of direcly use ped ids, we are mapping ped ids to
+        #array indices using a lookup table for each sequence -> speed
         #output: seq_lenght (real sequence lenght+1)*max_ped_id+1 (biggest id number in the sequence)*2 (x,y)
-        #get the max pedid from this sequence
-        #unique_ids, ind = np.unique(np.concatenate(pedlist).ravel().tolist(), return_index=True).astype(int)
+        
+        #get unique ids from sequence
         unique_ids = pd.unique(np.concatenate(pedlist).ravel().tolist()).astype(int)
-        #unique_ids = unique_ids[np.argsort(ind)]
+        # create a lookup table which maps ped ids -> array indices
         lookup_table = dict(zip(unique_ids, range(0, len(unique_ids))))
 
-        #print(lookup_table)
-        #seq_data = Variable(torch.zeros(self.seq_length, max_ped_id, 2))
         seq_data = np.zeros(shape=(self.seq_length, len(lookup_table), 2))
 
+        # create new structure of array
         for ind, frame in enumerate(x_seq):
             corr_index = [lookup_table[x] for x in frame[:, 0]]
             seq_data[ind, corr_index,:] = frame[:,1:3]
 
-        return Variable(torch.from_numpy(np.array(seq_data)).float()), lookup_table
+        return_arr = Variable(torch.from_numpy(np.array(seq_data)).float())
+        if self.use_cuda:                    
+            return_arr = return_arr.cuda()
+
+        return return_arr, lookup_table
 
     def add_element_to_dict(self, dict, key, value):
         dict.setdefault(key, [])

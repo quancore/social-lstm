@@ -54,8 +54,8 @@ def main():
     prefix = ''
     f_prefix = '.'
     if sample_args.drive is True:
-      prefix='drive/semester_project/new_social_LSTM_pytorch_v2/'
-      f_prefix = 'drive/semester_project/new_social_LSTM_pytorch_v2'
+      prefix='drive/semester_project/social_lstm_final/'
+      f_prefix = 'drive/semester_project/social_lstm_final'
 
     #run sh file for folder creation
     if not os.path.isdir("log/"):
@@ -109,7 +109,6 @@ def main():
 
     for iteration in range(sample_args.iteration):
         # Initialize net
-        #net = SocialModel(saved_args, True)
         net = get_model(sample_args.method, saved_args, True)
 
         if sample_args.use_cuda:        
@@ -117,14 +116,13 @@ def main():
 
         # Get the checkpoint path
         checkpoint_path = os.path.join(save_directory, save_tar_name+str(sample_args.epoch)+'.tar')
-        # checkpoint_path = os.path.join(save_directory, 'srnn_model.tar')
         if os.path.isfile(checkpoint_path):
             print('Loading checkpoint')
             checkpoint = torch.load(checkpoint_path)
-            # model_iteration = checkpoint['iteration']
             model_epoch = checkpoint['epoch']
             net.load_state_dict(checkpoint['state_dict'])
             print('Loaded checkpoint at epoch', model_epoch)
+        
         # For each batch
         iteration_submission = []
         iteration_result = []
@@ -150,25 +148,33 @@ def main():
             dataloader.clean_ped_list(x_seq, PedsList_seq, target_id, sample_args.obs_length, sample_args.pred_length)
 
             
-
-            # Dimensions of the dataset
-            #if d_seq == 0 and dataset[0] == 0:
-                #dimensions = [640, 480]
-            #else:
+            #get processing file name and then get dimensions of file
             folder_name = dataloader.get_directory_name_with_pointer(d_seq)
             dataset_data = dataloader.get_dataset_dimension(folder_name)
-
+            
+            #dense vector creation
             x_seq, lookup_seq = dataloader.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
-            orig_x_seq = x_seq.clone()
+            
+            #will be used for error calculation
+            orig_x_seq = x_seq.clone() 
+            
             target_id_values = orig_x_seq[0][lookup_seq[target_id], 0:2]
+            
+            #grid mask calculation
+            if sample_args.method == 2: #obstacle lstm
+                grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda, True)
+            elif  sample_args.method == 1: #social lstm   
+                grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda)
 
-            #print(x_seq[:, lookup_seq[target_id],:])
-
-            x_seq = translate(x_seq, PedsList_seq, lookup_seq ,target_id_values)
-            angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
-            x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
-            grid_seq = getSequenceGridMask(x_seq[:sample_args.obs_length], dataset_data, PedsList_seq, saved_args.neighborhood_size, saved_args.grid_size, sample_args.use_cuda)
+            #vectorize datapoints
             x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
+
+            # <------------- Experimental block ---------------->
+            # x_seq = translate(x_seq, PedsList_seq, lookup_seq ,target_id_values)
+            # angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
+            # x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
+            # grid_seq = getSequenceGridMask(x_seq[:sample_args.obs_length], dataset_data, PedsList_seq, saved_args.neighborhood_size, saved_args.grid_size, sample_args.use_cuda)
+            # x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
 
             if sample_args.use_cuda:
@@ -184,62 +190,18 @@ def main():
             else:
                 ret_x_seq = sample(obs_traj, obs_PedsList_seq, sample_args, net, x_seq, PedsList_seq, grid_seq, saved_args, dataset_data, dataloader, lookup_seq, numPedsList_seq, sample_args.gru, obs_grid)
             
+            #revert the points back to original space
+            ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)
             
-            ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-            #x_seq = revert_seq(x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-
-            ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
-            #x_seq = rotate_traj_with_target_ped(x_seq, -angle, PedsList_seq, lookup_seq)
-
-            ret_x_seq = translate(ret_x_seq, PedsList_seq, lookup_seq ,-target_id_values)
-            #x_seq = translate(x_seq, PedsList_seq, lookup_seq ,-target_id_values)
+            # <--------------------- Experimental inverse block ---------------------->
+            # ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
+            # ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
+            # ret_x_seq = translate(ret_x_seq, PedsList_seq, lookup_seq ,-target_id_values)
             
             # Record the mean and final displacement error
             total_error += get_mean_error(ret_x_seq[1:sample_args.obs_length].data, orig_x_seq[1:sample_args.obs_length].data, PedsList_seq[1:sample_args.obs_length], PedsList_seq[1:sample_args.obs_length], sample_args.use_cuda, lookup_seq)
             final_error += get_final_error(ret_x_seq[1:sample_args.obs_length].data, orig_x_seq[1:sample_args.obs_length].data, PedsList_seq[1:sample_args.obs_length], PedsList_seq[1:sample_args.obs_length], lookup_seq)
 
-
-            # # Get the grid masks for the sequence
-            # grid_seq = getSequenceGridMask(x_seq[:sample_args.obs_length], dataset_data, saved_args.neighborhood_size, saved_args.grid_size, sample_args.use_cuda)
-
-            # # Construct variable
-            # #print("initial_xseq: ", x_seq)
-            # x_seq, target_id_values, first_values_dict = vectorize_seq_with_ped(x_seq, PedsList_seq, lookup_seq ,target_id)
-            # #print("vectorized_xseq: ", x_seq[: , lookup_seq[target_id], :])
-            # angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
-            # x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
-            # #print("rotated_xseq: ", x_seq)
-            # #print(first_values_dict)
-
-            # #print(x_seq)
-            # #print(PedsList_seq)
-            # if sample_args.use_cuda:
-            #     x_seq = x_seq.cuda()
-
-            # #number of peds in this sequence per frame
-            # numx_seq = x_seq.size()[1]
-
-            # # Extract the observed part of the trajectories
-            # obs_traj, obs_PedsList_seq, obs_grid = x_seq[:sample_args.obs_length], PedsList_seq[:sample_args.obs_length], grid_seq[:sample_args.obs_length]
-
-            # # The sample function
-            # if sample_args.method == 3: #vanilla lstm
-            #     ret_x_seq = sample(obs_traj, obs_PedsList_seq, sample_args, net, x_seq, PedsList_seq, grid_seq, saved_args, dataset_data, dataloader, lookup_seq, numPedsList_seq, sample_args.gru)
-
-            # else:
-            #     ret_x_seq = sample(obs_traj, obs_PedsList_seq, sample_args, net, x_seq, PedsList_seq, grid_seq, saved_args, dataset_data, dataloader, lookup_seq, numPedsList_seq, sample_args.gru, obs_grid)
-            
-            # # Record the mean and final displacement error
-            # total_error += get_mean_error(ret_x_seq[1:sample_args.obs_length].data, x_seq[1:sample_args.obs_length].data, PedsList_seq[1:sample_args.obs_length], PedsList_seq[1:sample_args.obs_length], sample_args.use_cuda, lookup_seq)
-            # final_error += get_final_error(ret_x_seq[1:sample_args.obs_length].data, x_seq[1:sample_args.obs_length].data, PedsList_seq[1:sample_args.obs_length], PedsList_seq[1:sample_args.obs_length], lookup_seq)
-
-            # #revert changes for submission
-            # ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
-            # x_seq = rotate_traj_with_target_ped(x_seq, -angle, PedsList_seq, lookup_seq)
-            # #print("returned velocity: ", ret_x_seq[: , lookup_seq[target_id], :])
-            # ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-            # x_seq = revert_seq(x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-            # #print(ret_x_seq.data[sample_args.obs_length:, lookup_seq[target_id], :])
             
             end = time.time()
 

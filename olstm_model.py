@@ -67,7 +67,7 @@ class OLSTMModel(nn.Module):
         # Construct the variable
         Obs_tensor = Variable(torch.zeros(numNodes, self.grid_size*self.grid_size))
         if self.use_cuda:
-            social_tensor = social_tensor.cuda()
+            Obs_tensor = Obs_tensor.cuda()
         # For each ped
         for node in range(numNodes):
             # Compute the obstacle tensor
@@ -143,6 +143,8 @@ class OLSTMModel(nn.Module):
             list_of_nodes = [look_up[x] for x in nodeIDs]
 
             corr_index = Variable((torch.LongTensor(list_of_nodes)))
+            if self.use_cuda:
+                corr_index = corr_index.cuda()
             #print("list of nodes: %s"%nodeIDs)
             #print("trans: %s"%corr_index)
             #if self.use_cuda:

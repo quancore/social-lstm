@@ -526,7 +526,7 @@ def train(args):
                     ret_x_seq, loss = sample_validation_data(x_seq, PedsList_seq, grid_seq, args, net, lookup_seq, numPedsList_seq, dataloader)
                     
                     #revert the points back to original space
-                    ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)
+                    ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)S
 
                     # <---------------------- Experimental block revert----------------------->
                     # Revert the calculated coordinates back to original space:
