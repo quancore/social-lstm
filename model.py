@@ -143,6 +143,9 @@ class SocialModel(nn.Module):
             list_of_nodes = [look_up[x] for x in nodeIDs]
 
             corr_index = Variable((torch.LongTensor(list_of_nodes)))
+            if self.use_cuda:            
+                corr_index = corr_index.cuda()
+
             #print("list of nodes: %s"%nodeIDs)
             #print("trans: %s"%corr_index)
             #if self.use_cuda:
