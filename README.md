@@ -1,24 +1,14 @@
 # Social LSTM implementation in PyTorch
-**Table of Contents**
-
-[TOCM]
-
-[TOC]
 
 ## Project details
 **Semester project of Master of Computer Science in EPFL**
-
 **Student name** : Baran Nama
-
 **Advisor:** Alexandre Alahi
-
 **Presentation** : https://drive.google.com/file/d/1biC23s1tbsyDETKKBW8PFXWYyyhNEAuI/view?usp=sharing
 
 ## Implementation details
 **Baseline implementation**: https://github.com/vvanirudh/social-lstm-pytorch
-
 **Paper**: http://cvgl.stanford.edu/papers/CVPR16_Social_LSTM.pdf
-
 **Made improvements:** Please see attached presentation
 
 ## Documentation
@@ -28,7 +18,7 @@
 - **make_directories.sh**: Bash script for creation of file structure
 - **model.py**: Python file includes Social LSTM model definition
 - **olstm_model.py**: Python file includes Occupancy LSTM model definition
-- ** olstm_train.py**: Python script for training Occupancy LSTM model
+- **olstm_train.py**: Python script for training Occupancy LSTM model
 - **test.py**: Python script for model testing and getting output txt file for submission
 - **train.py**: Python script for training Social LSTM model
 - **utils.py**: Python script for handling input train/test/validation data and batching it
