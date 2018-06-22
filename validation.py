@@ -145,16 +145,15 @@ def main():
             dataset_data = dataloader.get_dataset_dimension(folder_name)
 
 
-            x_seq, lookup_seq = dataloader.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
-            orig_x_seq = x_seq.clone()
-            target_id_values = x_seq[0][lookup_seq[target_id], 0:2]
             
             #dense vector creation
             x_seq, lookup_seq = dataloader.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
             
             #will be used for error calculation
             orig_x_seq = x_seq.clone() 
-                        
+            
+            target_id_values = x_seq[0][lookup_seq[target_id], 0:2]
+
             #grid mask calculation
             if sample_args.method == 2: #obstacle lstm
                 grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, saved_args.neighborhood_size, saved_args.grid_size, saved_args.use_cuda, True)
@@ -196,7 +195,7 @@ def main():
             loss_batch += loss
             err_batch += err
             f_err_batch += f_err
-            results.append((x_seq.data.cpu().numpy(), ret_x_seq.data.cpu().numpy(), PedsList_seq, lookup_seq, dataloader.get_frame_sequence(sample_args.seq_length), target_id))
+            results.append((orig_x_seq.data.cpu().numpy(), ret_x_seq.data.cpu().numpy(), PedsList_seq, lookup_seq, dataloader.get_frame_sequence(sample_args.seq_length), target_id))
         
         end = time.time()
         print('Current file : ', dataloader.get_file_name(0),' Batch : ', batch+1, ' Sequence: ', sequence+1, ' Sequence mean error: ', err,' Sequence final error: ',f_err,' time: ', end - start)

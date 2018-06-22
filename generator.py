@@ -116,7 +116,12 @@ class data_augmentator():
 				# add random noise
 				modified_x_seq[ind, lookup_seq[ped], 0] = rotated_point[0] + noise[0]
 				modified_x_seq[ind, lookup_seq[ped], 1] = rotated_point[1] + noise[1]
-				modified_x_seq[ind, lookup_seq[ped], :] = torch.cat(rotate(origin, first_values_dict[ped], math.radians(angle))) + modified_x_seq[ind, lookup_seq[ped], :]
+				#modified_x_seq[ind, lookup_seq[ped], :] = torch.cat(rotate(origin, first_values_dict[ped], math.radians(angle))) + modified_x_seq[ind, lookup_seq[ped], :]
+				#roatate first frame value as well and add it back to get absoute coordinates
+				modified_x_seq[ind, lookup_seq[ped], 0] = (rotate(origin, first_values_dict[ped], math.radians(angle)))[0] + modified_x_seq[ind, lookup_seq[ped], 0]
+				modified_x_seq[ind, lookup_seq[ped], 1] = (rotate(origin, first_values_dict[ped], math.radians(angle)))[1] + modified_x_seq[ind, lookup_seq[ped], 1]
+
+
 		return modified_x_seq
     
 	def submision_seq_preprocess(self, x_seq, seq_lenght, lookup_seq):

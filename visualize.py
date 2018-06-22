@@ -186,8 +186,8 @@ def plot_trajectories(true_trajs, pred_trajs, nodesPresent, look_up, frames, nam
     #true_trajs = rotate_traj_with_target_ped(true_trajs, angle_true, nodesPresent, look_up)
     #pred_trajs = rotate_traj_with_target_ped(pred_trajs, angle_true, nodesPresent, look_up)
 
-    print("+++++++++++++++++++++++++++++++++++++++++++++++44")
-    print("angle: ", np.rad2deg(angle_true))
+    #print("+++++++++++++++++++++++++++++++++++++++++++++++44")
+    #print("angle: ", np.rad2deg(angle_true))
     print("true_")
     print(true_trajs[:, look_up[target_id], :])
     print("pred_")
