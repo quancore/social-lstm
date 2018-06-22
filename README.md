@@ -33,7 +33,8 @@
 3. If necesarry file structure is not exist (which is the initial situation), train script will run make_directories.sh and this command will automatically create file structure
 4. Enjoy!
 
-## Results
+## Results  
+
 |Model name|Avarage error   |Final error   | Mean error  |  
 | ------------ | ------------ | ------------ |  
 | Social LSTM  |  1.3865 |  2.098 |0.675|  
