@@ -1,7 +1,7 @@
 # Social LSTM implementation in PyTorch
 
 ## Project details
-**Semester project of Master of Computer Science in EPFL**
+**Semester project of Master of Computer Science in EPFL**  
 **Student name** : Baran Nama  
 **Advisor:** Alexandre Alahi  
 **Presentation** : https://drive.google.com/file/d/1biC23s1tbsyDETKKBW8PFXWYyyhNEAuI/view?usp=sharing  
@@ -34,11 +34,11 @@
 4. Enjoy!
 
 ## Results
-|Model name|Avarage error   |Final error   | Mean error  |
-| ------------ | ------------ | ------------ |
-| Social LSTM  |  1.3865 |  2.098 |0.675|
-| Occupancy LSTM  |2.1105   | 3.12  |1.101|
-| Vanilla LSTM  | 2.107  |3.114   |1.1|
+|Model name|Avarage error   |Final error   | Mean error  |  
+| ------------ | ------------ | ------------ |  
+| Social LSTM  |  1.3865 |  2.098 |0.675|  
+| Occupancy LSTM  |2.1105   | 3.12  |1.101|  
+| Vanilla LSTM  | 2.107  |3.114   |1.1|  
 
 **Reference**: http://trajnet.stanford.edu/result.php?cid=1
 
