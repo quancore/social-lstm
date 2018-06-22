@@ -638,10 +638,11 @@ class DataLoader():
         return self.folder_file_dict[key]
 
     def get_len_of_dataset(self):
+        # return the number of dataset in the mode
         return len(self.data)
 
     def clean_test_data(self, x_seq, target_id, obs_lenght, predicted_lenght):
-        #remove (pedid, x , y) array if x or y is nan for each frame in observed part
+        #remove (pedid, x , y) array if x or y is nan for each frame in observed part (for test mode)
         for frame_num in range(obs_lenght):
             nan_elements_index = np.where(np.isnan(x_seq[frame_num][:, 2]))
 
@@ -660,36 +661,34 @@ class DataLoader():
             except ValueError:
                 pass
 
-        #print("******************************")
-        #print("after x_seq: %s"%x_seq)
-
 
     def clean_ped_list(self, x_seq, pedlist_seq, target_id, obs_lenght, predicted_lenght):
+        # remove peds from pedlist after test cleaning
         target_id_arr = [target_id]
         for frame_num in range(obs_lenght+predicted_lenght):
             pedlist_seq[frame_num] = x_seq[frame_num][:,0]
 
     def write_to_file(self, data, base, f_prefix, model_name):
+        # write all files as txt format
         self.reset_batch_pointer()
-        #for file in range(len(data)):
         for file in range(self.numDatasets):
             path = self.get_file_path(f_prefix, base, model_name, file)
             file_name = self.get_file_name(file)
             self.write_dataset(data[file], file_name, path)
 
     def write_dataset(self, dataset_seq, file_name, path):
+        # write a file in txt format
         print("Writing to file  path: %s, file_name: %s"%(path, file_name))
         out = np.concatenate(dataset_seq, axis = 0)
         np.savetxt(os.path.join(path, file_name), out, fmt = "%1d %1.1f %.3f %.3f", newline='\n')
 
     def write_to_plot_file(self, data, path):
+        # write plot file for further visualization in pkl format
         self.reset_batch_pointer()
-        #for file in range(len(data)):
         for file in range(self.numDatasets):
             file_name = self.get_file_name(file)
             file_name = file_name.split('.')[0] + '.pkl'
             print("Writing to plot file  path: %s, file_name: %s"%(path, file_name))
-            #out = np.concatenate(data[file], axis = 0)
             with open(os.path.join(path, file_name), 'wb') as f:
                 pickle.dump(data[file], f)
 
@@ -709,5 +708,6 @@ class DataLoader():
         return id_number
 
     def get_dataset_dimension(self, file_name):
+        # return dataset dimension using dataset file name
         return self.dataset_dimensions[file_name]
 

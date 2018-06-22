@@ -1,10 +1,3 @@
-'''
-Helper functions for the structural RNN model
-introduced in https://arxiv.org/abs/1511.05298
-
-Author : Anirudh Vemula
-Date : 3rd April 2017
-'''
 import numpy as np
 import torch
 from torch.autograd import Variable
@@ -28,6 +21,7 @@ class WriteOnceDict(dict):
 
 #(1 = social lstm, 2 = obstacle lstm, 3 = vanilla lstm)
 def get_method_name(index):
+    # return method name given index
     return {
         1 : 'SOCIALLSTM',
         2 : 'OBSTACLELSTM',
@@ -35,23 +29,15 @@ def get_method_name(index):
     }.get(index, 'SOCIALLSTM')
 
 def get_model(index, arguments, infer = False):
-    return {
-        1 : SocialModel(arguments, infer),
-        2 : OLSTMModel(arguments, infer),
-        3 : VLSTMModel(arguments, infer)
-    }.get(index, SocialModel(arguments, infer))
-
-def getVector(pos_list):
-    '''
-    Gets the vector pointing from second element to first element
-    params:
-    pos_list : A list of size two containing two (x, y) positions
-    '''
-    pos_i = pos_list[0]
-    pos_j = pos_list[1]
-
-    return np.array(pos_i) - np.array(pos_j)
-
+    # return a model given index and arguments
+    if index == 1:
+        return SocialModel(arguments, infer)
+    elif index == 2:
+        return OLSTMModel(arguments, infer)
+    elif index == 3:
+        return VLSTMModel(arguments, infer)
+    else:
+        return SocialModel(arguments, infer)
 
 def getCoef(outputs):
     '''
@@ -76,6 +62,7 @@ def sample_gaussian_2d(mux, muy, sx, sy, corr, nodesPresent, look_up):
     Contains x-means, y-means, x-stds, y-stds and correlation
 
     nodesPresent : a list of nodeIDs present in the frame
+    look_up : lookup table for determining which ped is in which array index
 
     Returns
     =======
@@ -99,7 +86,6 @@ def sample_gaussian_2d(mux, muy, sx, sy, corr, nodesPresent, look_up):
         next_x[node] = next_values[0][0]
         next_y[node] = next_values[0][1]
 
-    # return torch.from_numpy(next_x).cuda(), torch.from_numpy(next_y).cuda()
     return next_x, next_y
 
 def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, using_cuda, look_up):
@@ -113,8 +99,10 @@ def get_mean_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, usin
     nodes : A tensor of shape pred_length x numNodes x 2
     Contains the true positions for the nodes
 
-    nodesPresent : A list of lists, of size pred_length
+    nodesPresent lists: A list of lists, of size pred_length
     Each list contains the nodeIDs of the nodes present at that time-step
+
+    look_up : lookup table for determining which ped is in which array index
 
     Returns
     =======
@@ -161,8 +149,11 @@ def get_final_error(ret_nodes, nodes, assumedNodesPresent, trueNodesPresent, loo
     nodes : A tensor of shape pred_length x numNodes x 2
     Contains the true positions for the nodes
 
-    nodesPresent : A list of lists, of size pred_length
+    nodesPresent lists: A list of lists, of size pred_length
     Each list contains the nodeIDs of the nodes present at that time-step
+
+    look_up : lookup table for determining which ped is in which array index
+
 
     Returns
     =======
@@ -260,6 +251,8 @@ def Gaussian2DLikelihood(outputs, targets, nodesPresent, look_up):
     targets : true locations
     assumedNodesPresent : Nodes assumed to be present in each frame in the sequence
     nodesPresent : True nodes present in each frame in the sequence
+    look_up : lookup table for determining which ped is in which array index
+
     '''
     seq_length = outputs.size()[0]
     # Extract mean, std devs and correlation
@@ -307,12 +300,16 @@ def Gaussian2DLikelihood(outputs, targets, nodesPresent, look_up):
 ##################### Data related methods ######################
 
 def remove_file_extention(file_name):
+    # remove file extension (.txt) given filename
     return file_name.split('.')[0]
 
 def add_file_extention(file_name, extention):
+    # add file extension (.txt) given filename
+
     return file_name + '.' + extention
 
 def clear_folder(path):
+    # remove all files in the folder
     if os.path.exists(path):
         shutil.rmtree(path)
         print("Folder succesfully removed: ", path)
@@ -320,6 +317,7 @@ def clear_folder(path):
         print("No such path: ",path)
 
 def delete_file(path, file_name_list):
+    # delete given file list
     for file in file_name_list:
         file_path = os.path.join(path, file)
         try:
@@ -332,6 +330,7 @@ def delete_file(path, file_name_list):
             print ("Error: %s - %s." % (e.filename,e.strerror))
 
 def get_all_file_names(path):
+    # return all file names given directory
     files = []
     for (dirpath, dirnames, filenames) in walk(path):
         files.extend(filenames)
@@ -339,12 +338,14 @@ def get_all_file_names(path):
     return files
 
 def create_directories(base_folder_path, folder_list):
+    # create folders using a folder list and path
     for folder_name in folder_list:
         directory = os.path.join(base_folder_path, folder_name)
         if not os.path.exists(directory):
             os.makedirs(directory)
 
 def unique_list(l):
+  # get unique elements from list
   x = []
   for a in l:
     if a not in x:
@@ -352,51 +353,39 @@ def unique_list(l):
   return x
 
 def angle_between(p1, p2):
+    # return angle between two points
     ang1 = np.arctan2(*p1[::-1])
     ang2 = np.arctan2(*p2[::-1])
     return ((ang1 - ang2) % (2 * np.pi))
 
 def vectorize_seq(x_seq, PedsList_seq, lookup_seq):
     #substract first frame value to all frames for a ped.Therefore, convert absolute pos. to relative pos.
-    # pred traj is the flag for using predicted traj in visualization because this traj has 0 in the first value (or unpredicted)
-    #print("before vectorize: %s"%x_seq)
     first_values_dict = WriteOnceDict()
     vectorized_x_seq = x_seq.clone()
     for ind, frame in enumerate(x_seq):
         for ped in PedsList_seq[ind]:
             first_values_dict[ped] = frame[lookup_seq[ped], 0:2]
-            #vectorized_x_seq[ind, lookup_seq[ped], 0] = frame[lookup_seq[ped], 0] - first_values_dict[ped][0]
-            #vectorized_x_seq[ind, lookup_seq[ped], 1] = frame[lookup_seq[ped], 1] - first_values_dict[ped][1]
             vectorized_x_seq[ind, lookup_seq[ped], 0:2]  = frame[lookup_seq[ped], 0:2] - first_values_dict[ped][0:2]
 
-
-    #print("after vectorize: %s"%vectorizedx_seq)
-    #print("************************************")
     return vectorized_x_seq, first_values_dict
 
 def translate(x_seq, PedsList_seq, lookup_seq, value):
-    #substract first frame value of target ped to all frames for a ped.Therefore, convert absolute pos. to relative pos.
-    # pred traj is the flag for using predicted traj in visualization because this traj has 0 in the first value (or unpredicted)
-    #print("before vectorize: %s"%x_seq)
-    #print(lookup_seq)
-    #print(target_id)
+    # translate al trajectories given x and y values
     vectorized_x_seq = x_seq.clone()
     for ind, frame in enumerate(x_seq):
         for ped in PedsList_seq[ind]:
             vectorized_x_seq[ind, lookup_seq[ped], 0:2]  = frame[lookup_seq[ped], 0:2] - value[0:2]
 
-    #print("after vectorize: %s"%vectorized_x_seq)
-    #print("************************************")
     return vectorized_x_seq
 
 def revert_seq(x_seq, PedsList_seq, lookup_seq, first_values_dict):
-    #print((dataset))
-    vectorized_x_seq = x_seq.clone()
+    # convert velocity array to absolute position array
+    absolute_x_seq = x_seq.clone()
     for ind, frame in enumerate(x_seq):
         for ped in PedsList_seq[ind]:
-            vectorized_x_seq[ind, lookup_seq[ped], 0:2] = frame[lookup_seq[ped], 0:2] + first_values_dict[ped][0:2]
+            absolute_x_seq[ind, lookup_seq[ped], 0:2] = frame[lookup_seq[ped], 0:2] + first_values_dict[ped][0:2]
 
-    return vectorized_x_seq
+    return absolute_x_seq
 
 
 def rotate(origin, point, angle):
@@ -426,12 +415,16 @@ def time_lr_scheduler(optimizer, epoch, lr_decay=0.5, lr_decay_epoch=10):
 
 def sample_validation_data(x_seq, Pedlist, grid, args, net, look_up, num_pedlist, dataloader):
     '''
-    The train sample function
+    The validation sample function
     params:
     x_seq: Input positions
     Pedlist: Peds present in each frame
     args: arguments
     net: The model
+    num_pedlist : number of peds in each frame
+    look_up : lookup table for determining which ped is in which array index
+
+
     '''
     # Number of peds in the sequence
     numx_seq = len(look_up)
@@ -481,12 +474,15 @@ def sample_validation_data(x_seq, Pedlist, grid, args, net, look_up, num_pedlist
 
 def sample_validation_data_vanilla(x_seq, Pedlist, args, net, look_up, num_pedlist, dataloader):
     '''
-    The train sample function
+    The validation sample function for vanilla method
     params:
     x_seq: Input positions
     Pedlist: Peds present in each frame
     args: arguments
     net: The model
+    num_pedlist : number of peds in each frame
+    look_up : lookup table for determining which ped is in which array index
+
     '''
     # Number of peds in the sequence
     numx_seq = len(look_up)
@@ -534,6 +530,7 @@ def sample_validation_data_vanilla(x_seq, Pedlist, args, net, look_up, num_pedli
 
 
 def rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq):
+    # rotate sequence given angle
     origin = (0, 0)
     vectorized_x_seq = x_seq.clone()
     for ind, frame in enumerate(x_seq):

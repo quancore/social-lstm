@@ -232,10 +232,6 @@ def train(args):
                 # vectorize trajectories in sequence
                 x_seq, _ = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
-                #print("target id : ", target_id)
-                #print("look up : ", lookup_seq)
-                #print("pedlist_seq: ", PedsList_seq)
-                #print("before_xseq: ", x_seq)
                 
                 if args.use_cuda:                    
                     x_seq = x_seq.cuda()
@@ -538,7 +534,7 @@ def train(args):
     #    dataloader.write_to_plot_file(all_epoch_results[best_epoch_val], plot_directory)
 
     #else:
-    if validation_dataset_executed:
+    if validation_dataset_executed: # if we executed a validation epoch, write last epoch file
         dataloader.switch_to_dataset_type(load_data=False)
         create_directories(plot_directory, [plot_train_file_directory])
         dataloader.write_to_plot_file(all_epoch_results[len(all_epoch_results)-1], os.path.join(plot_directory, plot_train_file_directory))

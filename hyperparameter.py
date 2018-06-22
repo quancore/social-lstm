@@ -11,9 +11,8 @@ import numpy as np
 from utils import DataLoader
 from helper import get_mean_error, get_final_error
 
-from helper import Gaussian2DLikelihood, Gaussian2DLikelihoodInference, create_directories, sample_validation_data, vectorize_seq_with_ped, angle_between, \
-rotate_traj_with_target_ped, revert_seq, get_method_name, get_model
-from grid import getSequenceGridMask, getGridMaskInference
+from helper import *
+from grid import getSequenceGridMask
 
 class parameters():
     def __init__(self, args):
@@ -92,22 +91,22 @@ def main():
     # Maximum number of pedestrians to be considered
     parser.add_argument('--maxNumPeds', type=int, default=27,
                         help='Maximum Number of Pedestrians')
-
+    # cuda support
     parser.add_argument('--use_cuda', action="store_true", default=False,
                         help='Use GPU or not')
-
+    # drive support
     parser.add_argument('--drive', action="store_true", default=False,
                         help='Use Google drive or not')
-
+    # number of validation dataset will be used
     parser.add_argument('--num_validation', type=int, default=1,
                         help='Total number of validation dataset will be visualized')
-
+    # gru model
     parser.add_argument('--gru', action="store_true", default=False,
                         help='True : GRU cell, False: LSTM cell')
-
+    # method selection for hyperparameter
     parser.add_argument('--method', type=int, default=1,
                         help='Method of lstm will be used (1 = social lstm, 2 = obstacle lstm, 3 = vanilla lstm)')
-
+    # number of parameter set will be logged
     parser.add_argument('--best_n', type=int, default=100,
                         help='Number of best n configuration will be logged')
 
@@ -121,8 +120,8 @@ def main():
     prefix = ''
     f_prefix = '.'
     if args.drive is True:
-      prefix='drive/semester_project/new_social_LSTM_pytorch_v2/'
-      f_prefix = 'drive/semester_project/new_social_LSTM_pytorch_v2'
+      prefix='drive/semester_project/social_lstm_final/'
+      f_prefix = 'drive/semester_project/social_lstm_final'
     
 
     method_name = get_method_name(args.method)
@@ -153,11 +152,11 @@ def main():
 
     for hyperparams in itertools.islice(sample_hyperparameters(), args.num_samples):
         args = parameters(parser)
+        # randomly sample a parameter set
         args.rnn_size = hyperparams.pop("rnn_size")
         args.learning_schedule = hyperparams.pop("learning_schedule")
         args.grad_clip = hyperparams.pop("grad_clip")
         args.learning_rate = hyperparams.pop("learning_rate")
-        #args.decay_rate = hyperparams.pop("decay_rate")
         args.lambda_param = hyperparams.pop("lambda_param")
         args.dropout = hyperparams.pop("dropout")
         args.embedding_size = hyperparams.pop("embedding_size")
@@ -210,39 +209,21 @@ def main():
                     # Get the data corresponding to the current sequence
                     x_seq ,_ , d_seq, numPedsList_seq, PedsList_seq = x[sequence], y[sequence], d[sequence], numPedsList[sequence], PedsList[sequence]
                     target_id = target_ids[sequence]
-                    #print('target id:' , target_id)
-                    #print('pedlist: ', PedsList_seq)
 
-
-                    # Dataset dimensions
-                    #if d_seq == 0 and datasets[0] == 0:
-                        #dataset_data = [640, 480]
-                    #else:
+                    #get processing file name and then get dimensions of file
                     folder_name = dataloader_t.get_directory_name_with_pointer(d_seq)
                     dataset_data = dataloader_t.get_dataset_dimension(folder_name)
 
-
-                    # Compute grid masks
-                    #print(x_seq)
-
-                    grid_seq = getSequenceGridMask(x_seq, dataset_data, args.neighborhood_size, args.grid_size, args.use_cuda)
-                    #print(grid_seq)
-
-                      # Construct variables
+                    #dense vector creation
                     x_seq, lookup_seq = dataloader_t.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
-                    #print("target id : ", target_id)
-                    #print("look up : ", lookup_seq)
-                    #print("pedlist_seq: ", PedsList_seq)
-                    #print("before_xseq: ", x_seq)
-                    x_seq, _, _= vectorize_seq_with_ped(x_seq, PedsList_seq, lookup_seq ,target_id)
-                    #x_seq, target_id_values, first_values_dict = vectorize_seq_with_ped(x_seq, PedsList_seq, lookup_seq ,target_id)
-                    #print("after_vectorize_seq: ", x_seq)
-                    angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
-                    #print("angle: ", np.rad2deg(angle))
-                    x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
-                    #print("after_xseq: ", x_seq)
-                    #x_seq = rotate_traj_with_target_ped(x_seq, -angle, PedsList_seq, lookup_seq)
-                    #x_seq = revert_seq(x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
+                    target_id_values = x_seq[0][lookup_seq[target_id], 0:2]
+                    #grid mask calculation
+                    if args.method == 2: #obstacle lstm
+                        grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda, True)
+                    elif  args.method == 1: #social lstm   
+                        grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda)
+                    # vectorize trajectories in sequence
+                    x_seq, _ = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
 
                     if args.use_cuda:                    
@@ -276,13 +257,13 @@ def main():
 
                     # Compute loss
                     loss = Gaussian2DLikelihood(outputs, x_seq, PedsList_seq, lookup_seq)
-                    loss_batch += loss.data[0]
+                    loss_batch += loss.item()
 
                     # Compute gradients
                     loss.backward()
 
                     # Clip gradients
-                    torch.nn.utils.clip_grad_norm(net.parameters(), args.grad_clip)
+                    torch.nn.utils.clip_grad_norm_(net.parameters(), args.grad_clip)
 
                     # Update parameters
                     optimizer.step()
@@ -353,24 +334,32 @@ def main():
                 x_seq ,_ , d_seq, numPedsList_seq, PedsList_seq = x[sequence], y[sequence], d[sequence], numPedsList[sequence], PedsList[sequence]
                 target_id = target_ids[sequence]
 
-                # Dataset dimensions
-                #if d_seq == 0 and datasets[0] == 0:
-                    #dataset_data = [640, 480]
-                #else:
                 folder_name = dataloader_v.get_directory_name_with_pointer(d_seq)
                 dataset_data = dataloader_v.get_dataset_dimension(folder_name)
-                #print(PedsList_seq)
-                #print(target_id)
 
 
-                # Compute grid masks
-                grid_seq = getSequenceGridMask(x_seq, dataset_data, args.neighborhood_size, args.grid_size, args.use_cuda)
-
-                # Construct variables
+                #dense vector creation
                 x_seq, lookup_seq = dataloader_v.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
-                x_seq, target_id_values, first_values_dict = vectorize_seq_with_ped(x_seq, PedsList_seq, lookup_seq ,target_id)
-                angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
-                x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
+                
+                #will be used for error calculation
+                orig_x_seq = x_seq.clone() 
+                target_id_values = x_seq[0][lookup_seq[target_id], 0:2]
+                
+                #grid mask calculation
+                if args.method == 2: #obstacle lstm
+                    grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda, True)
+                elif  args.method == 1: #social lstm   
+                    grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda)
+                # vectorize trajectories in sequence
+                x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
+
+
+                # <--------------Experimental block --------------->
+                # Construct variables
+                # x_seq, lookup_seq = dataloader_v.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
+                # x_seq, target_id_values, first_values_dict = vectorize_seq_with_ped(x_seq, PedsList_seq, lookup_seq ,target_id)
+                # angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
+                # x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
 
                 if args.use_cuda:                    
                     x_seq = x_seq.cuda()
@@ -381,16 +370,16 @@ def main():
                 else:
                     ret_x_seq, loss = sample_validation_data(x_seq, PedsList_seq, grid_seq, args, net, lookup_seq, numPedsList_seq, dataloader_v)
                 
-                err = get_mean_error(ret_x_seq.data, x_seq.data, PedsList_seq, PedsList_seq, args.use_cuda, lookup_seq)
-                f_err = get_final_error(ret_x_seq.data, x_seq.data, PedsList_seq, PedsList_seq, lookup_seq)
-                
-                ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
-                x_seq = rotate_traj_with_target_ped(x_seq, -angle, PedsList_seq, lookup_seq)
-                
-                ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-                x_seq = revert_seq(x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
+                #revert the points back to original space
+                ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)
 
-                loss_batch += loss
+                err = get_mean_error(ret_x_seq.data, orig_x_seq.data, PedsList_seq, PedsList_seq, args.use_cuda, lookup_seq)
+                f_err = get_final_error(ret_x_seq.data, orig_x_seq.data, PedsList_seq, PedsList_seq, lookup_seq)
+                
+                # ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
+                # ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
+
+                loss_batch += loss.item()
                 err_batch += err
                 f_err_batch += f_err
             
@@ -400,7 +389,7 @@ def main():
             err_batch = err_batch / dataloader_v.batch_size
             f_err_batch = f_err_batch / dataloader_v.batch_size
             num_of_batch += 1
-            loss_epoch += loss_batch.data[0]
+            loss_epoch += loss_batch
             err_epoch += err_batch
             f_err_epoch += f_err_batch
 
@@ -409,6 +398,7 @@ def main():
             loss_epoch = loss_epoch / dataloader_v.num_batches
             err_epoch = err_epoch / dataloader_v.num_batches
             f_err_epoch = f_err_epoch / dataloader_v.num_batches
+            # calculate avarage error and time
             avg_err = (err_epoch+f_err_epoch)/2
             elapsed_time = (total_process_end - total_process_start)
             args.time = elapsed_time
@@ -441,5 +431,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-

@@ -4,7 +4,7 @@ import itertools
 from torch.autograd import Variable
 
 
-def getGridMask(frame, dimensions, num_person, neighborhood_size, grid_size, is_occupancy):
+def getGridMask(frame, dimensions, num_person, neighborhood_size, grid_size, is_occupancy = False):
     '''
     This function computes the binary mask that represents the
     occupancy of each ped in the other's grid
@@ -13,31 +13,18 @@ def getGridMask(frame, dimensions, num_person, neighborhood_size, grid_size, is_
     dimensions : This will be a list [width, height]
     neighborhood_size : Scalar value representing the size of neighborhood considered
     grid_size : Scalar value representing the size of the grid discretization
+    num_person : number of people exist in given frame
     is_occupancy: A flag using for calculation of accupancy map
 
     '''
-
-    # Maximum number of pedestrians
-    #print("***********************")
-    #print(frame)
-    #print(pedlist_seq)
-    #print(lookup_seq)
-    #mnp = frame.shape[0]
-    #print("*********************")
     mnp = num_person
-    #print(pedlist_seq)
-    #print(lookup_seq)
-
 
     width, height = dimensions[0], dimensions[1]
-    #print("width: ",width,"height: ",height)
     if is_occupancy:
         frame_mask = np.zeros((mnp, grid_size**2))
     else:
         frame_mask = np.zeros((mnp, mnp, grid_size**2))
     frame_np =  frame.data.numpy()
-
-    #print("frame: ", frame)
 
     #width_bound, height_bound = (neighborhood_size/(width*1.0)), (neighborhood_size/(height*1.0))
     width_bound, height_bound = (neighborhood_size/(width*1.0))*2, (neighborhood_size/(height*1.0))*2
@@ -61,7 +48,6 @@ def getGridMask(frame, dimensions, num_person, neighborhood_size, grid_size, is_
         # If in surrounding, calculate the grid cell
         cell_x = int(np.floor(((other_x - width_low)/width_bound) * grid_size))
         cell_y = int(np.floor(((other_y - height_low)/height_bound) * grid_size))
-        #print("cell_x: ", cell_x, "cell_y: ", cell_y)
 
         if cell_x >= grid_size or cell_x < 0 or cell_y >= grid_size or cell_y < 0:
                 continue
@@ -135,8 +121,6 @@ def getSequenceGridMask(sequence, dimensions, pedlist_seq, neighborhood_size, gr
     '''
     sl = len(sequence)
     sequence_mask = []
-    #print(pedlist_seq)
-    #print(lookup_seq)
 
     for i in range(sl):
         mask = Variable(torch.from_numpy(getGridMask(sequence[i], dimensions, len(pedlist_seq[i]), neighborhood_size, grid_size, is_occupancy)).float())

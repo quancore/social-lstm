@@ -12,9 +12,8 @@ import numpy as np
 from utils import DataLoader
 from helper import get_mean_error, get_final_error
 
-from helper import Gaussian2DLikelihood, Gaussian2DLikelihoodInference, create_directories, sample_validation_data, translate, angle_between, \
-rotate_traj_with_target_ped, revert_seq, get_method_name, get_model, vectorize_seq
-from grid import getSequenceGridMask, getGridMaskInference
+from helper import *
+from grid import getSequenceGridMask
 
 
 def main():
@@ -38,13 +37,13 @@ def main():
     # Size of the social grid parameter
     parser.add_argument('--grid_size', type=int, default=4,
                         help='Grid size of the social grid')
-
+    # number of validation will be used
     parser.add_argument('--num_validation', type=int, default=5,
                         help='Total number of validation dataset will be visualized')
-
+    # gru support
     parser.add_argument('--gru', action="store_true", default=False,
                         help='True : GRU cell, False: LSTM cell')
-
+    # method selection
     parser.add_argument('--method', type=int, default=1,
                         help='Method of lstm will be used (1 = social lstm, 2 = obstacle lstm, 3 = vanilla lstm)')
     
@@ -55,8 +54,8 @@ def main():
     prefix = ''
     f_prefix = '.'
     if sample_args.drive is True:
-      prefix='drive/semester_project/new_social_LSTM_pytorch_v2/'
-      f_prefix = 'drive/semester_project/new_social_LSTM_pytorch_v2'
+      prefix='drive/semester_project/social_lstm_final/'
+      f_prefix = 'drive/semester_project/social_lstm_final'
     
 
     method_name = get_method_name(sample_args.method)
@@ -87,11 +86,9 @@ def main():
 
     # Get the checkpoint path
     checkpoint_path = os.path.join(save_directory, save_tar_name+str(sample_args.epoch)+'.tar')
-    # checkpoint_path = os.path.join(save_directory, 'srnn_model.tar')
     if os.path.isfile(checkpoint_path):
         print('Loading checkpoint')
         checkpoint = torch.load(checkpoint_path)
-        # model_iteration = checkpoint['iteration']
         model_epoch = checkpoint['epoch']
         net.load_state_dict(checkpoint['state_dict'])
         print('Loaded checkpoint at epoch', model_epoch)
@@ -144,30 +141,36 @@ def main():
             x_seq ,_ , d_seq, numPedsList_seq, PedsList_seq = x[sequence], y[sequence], d[sequence], numPedsList[sequence], PedsList[sequence]
             target_id = target_ids[sequence]
 
-            # Dataset dimensions
-            #if d_seq == 0 and datasets[0] == 0:
-                #dataset_data = [640, 480]
-            #else:
             folder_name = dataloader.get_directory_name_with_pointer(d_seq)
             dataset_data = dataloader.get_dataset_dimension(folder_name)
 
-            #print(PedsList_seq)
-            #print(target_id)
 
             x_seq, lookup_seq = dataloader.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
             orig_x_seq = x_seq.clone()
             target_id_values = x_seq[0][lookup_seq[target_id], 0:2]
+            
+            #dense vector creation
+            x_seq, lookup_seq = dataloader.convert_proper_array(x_seq, numPedsList_seq, PedsList_seq)
+            
+            #will be used for error calculation
+            orig_x_seq = x_seq.clone() 
+                        
+            #grid mask calculation
+            if sample_args.method == 2: #obstacle lstm
+                grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, saved_args.neighborhood_size, saved_args.grid_size, saved_args.use_cuda, True)
+            elif  sample_args.method == 1: #social lstm   
+                grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, saved_args.neighborhood_size, saved_args.grid_size, saved_args.use_cuda)
 
-
-            x_seq = translate(x_seq, PedsList_seq, lookup_seq ,target_id_values)
-            angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
-
-            x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
-
-
-            # Compute grid masks
-            grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, sample_args.neighborhood_size, sample_args.grid_size, sample_args.use_cuda)
+            #vectorize datapoints
             x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
+
+            # <---------------- Experimental block (may need update in methods)----------------------->
+            # x_seq = translate(x_seq, PedsList_seq, lookup_seq ,target_id_values)
+            # angle = angle_between(reference_point, (x_seq[1][lookup_seq[target_id], 0].data.numpy(), x_seq[1][lookup_seq[target_id], 1].data.numpy()))
+            # x_seq = rotate_traj_with_target_ped(x_seq, angle, PedsList_seq, lookup_seq)
+            # # Compute grid masks
+            # grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, sample_args.neighborhood_size, sample_args.grid_size, sample_args.use_cuda)
+            # x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
 
             if sample_args.use_cuda:                    
@@ -179,14 +182,13 @@ def main():
             else:
                 ret_x_seq, loss = sample_validation_data(x_seq, PedsList_seq, grid_seq, sample_args, net, lookup_seq, numPedsList_seq, dataloader)
             
-            ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-
-            ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
-            #x_seq = rotate_traj_with_target_ped(x_seq, -angle, PedsList_seq, lookup_seq)
+            #<---------------------Experimental inverse block -------------->
+            # ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
+            # ret_x_seq = rotate_traj_with_target_ped(ret_x_seq, -angle, PedsList_seq, lookup_seq)
+            # ret_x_seq = translate(ret_x_seq, PedsList_seq, lookup_seq ,-target_id_values)
+            #revert the points back to original space
+            ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)
             
-            ret_x_seq = translate(ret_x_seq, PedsList_seq, lookup_seq ,-target_id_values)
-            #x_seq = revert_seq(x_seq, PedsList_seq, lookup_seq, target_id_values, first_values_dict)
-
             err = get_mean_error(ret_x_seq.data, orig_x_seq.data, PedsList_seq, PedsList_seq, sample_args.use_cuda, lookup_seq)
             f_err = get_final_error(ret_x_seq.data, orig_x_seq.data, PedsList_seq, PedsList_seq, lookup_seq)
            

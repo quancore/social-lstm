@@ -73,19 +73,19 @@ def main():
     # GRU parameter
     parser.add_argument('--gru', action="store_true", default=False,
                         help='True : GRU cell, False: LSTM cell')
-    
+    # drive option
     parser.add_argument('--drive', action="store_true", default=False,
                         help='Use Google drive or not')
-
+    # number of validation will be used
     parser.add_argument('--num_validation', type=int, default=2,
                         help='Total number of validation dataset for validate accuracy')
-
+    # frequency of validation
     parser.add_argument('--freq_validation', type=int, default=1,
                         help='Frequency number(epoch) of validation using validation data')
-
+    # frequency of optimazer learning decay
     parser.add_argument('--freq_optimizer', type=int, default=8,
                         help='Frequency number(epoch) of learning decay for optimizer')
-
+    # store grids in epoch 0 and use further.2 times faster -> Intensive memory use around 12 GB
     parser.add_argument('--grid', action="store_true", default=True,
                         help='Whether store grids and use further epoch')
     
@@ -141,7 +141,6 @@ def train(args):
 
     # model directory
     save_directory = os.path.join(prefix, 'model/')
-    #save_directory += str(args.leaveDataset) + '/'
     
     # Save the arguments int the config file
     with open(os.path.join(save_directory, method_name, model_name,'config.pkl'), 'wb') as f:
@@ -209,9 +208,6 @@ def train(args):
                 # Get the data corresponding to the current sequence
                 x_seq ,_ , d_seq, numPedsList_seq, PedsList_seq = x[sequence], y[sequence], d[sequence], numPedsList[sequence], PedsList[sequence]
                 target_id = target_ids[sequence]
-
-                #print('target id:' , target_id)
-                #print('pedlist: ', PedsList_seq)
 
                 #get processing file name and then get dimensions of file
                 folder_name = dataloader.get_directory_name_with_pointer(d_seq)

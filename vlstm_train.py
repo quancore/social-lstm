@@ -132,7 +132,6 @@ def train(args):
 
     # model directory
     save_directory = os.path.join(prefix, 'model/')
-    #save_directory += str(args.leaveDataset) + '/'
     
     # Save the arguments int the config file
     with open(os.path.join(save_directory, method_name, model_name,'config.pkl'), 'wb') as f:
