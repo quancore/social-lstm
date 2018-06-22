@@ -36,13 +36,13 @@
 ## Results  
 
 | Model name | Avarage error | Final error | Mean error |
-| :---: | :---: | :---: |
+| :---: | :---: | :---: | :---: |
 | Social LSTM | 1.3865 | 2.098 | 0.675 |
 | Occupancy LSTM | 2.1105 | 3.12 | 1.101 |
 | Vanilla LSTM | 2.107 | 3.114 | 1.1 |
 
 | Model name | Avarage error | Final error | Mean error |
-| :---: | :---: | :---: |
+| :---: | :---: | :---: | :---: |
 | Seconds | 301 | 283 |
 
 
