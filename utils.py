@@ -577,16 +577,16 @@ class DataLoader():
             seq_data[ind, corr_index,:] = frame[:,1:3]
 
         return_arr = Variable(torch.from_numpy(np.array(seq_data)).float())
-        if self.use_cuda:                    
-            return_arr = return_arr.cuda()
 
         return return_arr, lookup_table
 
     def add_element_to_dict(self, dict, key, value):
+        # helper function to add a element to dictionary
         dict.setdefault(key, [])
         dict[key].append(value)
 
     def get_dataset_path(self, base_path, f_prefix):
+        # get all datasets from given set of directories
         dataset = []
         dir_names = unique_list(self.get_all_directory_namelist())
         for dir_ in dir_names:
@@ -604,6 +604,7 @@ class DataLoader():
             return self.data_dirs[self.valid_dataset_pointer+offset].split('/')[-1]
 
     def create_folder_file_dict(self):
+        # create a helper dictionary folder name:file name
         self.folder_file_dict = {}
         for dir_ in self.base_data_dirs:
             folder_name = dir_.split('/')[-2]
@@ -617,6 +618,7 @@ class DataLoader():
         return folder_name
 
     def get_directory_name_with_pointer(self, pointer_index):
+        # get directory name using pointer index
         folder_name = self.data_dirs[pointer_index].split('/')[-2]
         return folder_name
 
@@ -632,6 +634,7 @@ class DataLoader():
         return base_folder_name
 
     def get_base_file_name(self, key):
+        # return file name using folder- file dictionary
         return self.folder_file_dict[key]
 
     def get_len_of_dataset(self):
