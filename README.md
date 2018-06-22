@@ -2,14 +2,14 @@
 
 ## Project details
 **Semester project of Master of Computer Science in EPFL**
-**Student name** : Baran Nama
-**Advisor:** Alexandre Alahi
-**Presentation** : https://drive.google.com/file/d/1biC23s1tbsyDETKKBW8PFXWYyyhNEAuI/view?usp=sharing
+**Student name** : Baran Nama  
+**Advisor:** Alexandre Alahi  
+**Presentation** : https://drive.google.com/file/d/1biC23s1tbsyDETKKBW8PFXWYyyhNEAuI/view?usp=sharing  
 
 ## Implementation details
-**Baseline implementation**: https://github.com/vvanirudh/social-lstm-pytorch
-**Paper**: http://cvgl.stanford.edu/papers/CVPR16_Social_LSTM.pdf
-**Made improvements:** Please see attached presentation
+**Baseline implementation**: https://github.com/vvanirudh/social-lstm-pytorch  
+**Paper**: http://cvgl.stanford.edu/papers/CVPR16_Social_LSTM.pdf  
+**Made improvements:** Please see attached presentation  
 
 ## Documentation
 - **generator.py** : Python script for generating artifical datasets
