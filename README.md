@@ -41,7 +41,7 @@
 | Occupancy LSTM | 2.1105 | 3.12 | 1.101 |
 | Vanilla LSTM | 2.107 | 3.114 | 1.1 |
 
-| Attempt | #1 | #2 |
+| Model name | Avarage error | Final error | Mean error |
 | :---: | :---: | :---: |
 | Seconds | 301 | 283 |
 
