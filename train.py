@@ -504,6 +504,10 @@ def train(args):
                     #grid mask calculation
                     grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda)
                     
+                    if args.use_cuda:
+                        x_seq = x_seq.cuda()
+                        orig_x_seq = orig_x_seq.cuda()
+
                     #vectorize datapoints
                     x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
@@ -514,13 +518,9 @@ def train(args):
                     # grid_seq = getSequenceGridMask(x_seq, dataset_data, PedsList_seq, args.neighborhood_size, args.grid_size, args.use_cuda)
                     # x_seq, first_values_dict = vectorize_seq(x_seq, PedsList_seq, lookup_seq)
 
-
-                    if args.use_cuda:                    
-                        x_seq = x_seq.cuda()
-
                     #sample predicted points from model
                     ret_x_seq, loss = sample_validation_data(x_seq, PedsList_seq, grid_seq, args, net, lookup_seq, numPedsList_seq, dataloader)
-                    
+
                     #revert the points back to original space
                     ret_x_seq = revert_seq(ret_x_seq, PedsList_seq, lookup_seq, first_values_dict)
 
