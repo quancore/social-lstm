@@ -8,7 +8,8 @@
 
 ## Implementation details
 **Baseline implementation**: https://github.com/vvanirudh/social-lstm-pytorch  
-**Paper**: http://cvgl.stanford.edu/papers/CVPR16_Social_LSTM.pdf  
+**Paper**: http://cvgl.stanford.edu/papers/CVPR16_Social_LSTM.pdf
+**Detailed info about challange and datasets**: https://www.aicrowd.com/challenges/trajnet-a-trajectory-forecasting-challenge
 **Made improvements:** Please see attached presentation  
 
 ## Documentation
